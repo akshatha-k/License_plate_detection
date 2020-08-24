@@ -2,36 +2,42 @@ import sys, os
 import keras
 import cv2
 import traceback
-
+from args import get_args
 from src.keras_utils 			import load_model
 from glob 						import glob
 from os.path 					import splitext, basename
 from src.utils 					import im2single
 from src.keras_utils 			import load_model, detect_lp
 from src.label 					import Shape, writeShapes
+from os import listdir
+from os.path import isfile, join
 
 
 def adjust_pts(pts,lroi):
 	return pts*lroi.wh().reshape((2,1)) + lroi.tl().reshape((2,1))
 
 
+args = get_args()
+
 if __name__ == '__main__':
 
 	try:
 		
-		input_dir  = sys.argv[1]
-		output_dir = input_dir
-
+		input_dir  = args.input_dir
+		output_dir = args.output_dir
+		lp_model = args.lp_model
+		print(input_dir)
 		lp_threshold = .5
 
-		wpod_net_path = sys.argv[2]
+		wpod_net_path = lp_model
 		wpod_net = load_model(wpod_net_path)
 
-		imgs_paths = glob('%s/*car.png' % input_dir)
-
+		#imgs_paths = glob('{}/*.jpg'.format(input_dir))
+		onlyfiles = ["{}/{}".format(input_dir,f) for f in listdir(input_dir) if isfile(join(input_dir, f))]
+		print(onlyfiles)
 		print('Searching for license plates using WPOD-NET')
 
-		for i,img_path in enumerate(imgs_paths):
+		for i,img_path in enumerate(onlyfiles):
 
 			print('\t Processing %s' % img_path)
 
