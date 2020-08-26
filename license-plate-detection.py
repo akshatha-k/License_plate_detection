@@ -31,7 +31,8 @@ if __name__ == '__main__':
 
 		wpod_net_path = lp_model
 		wpod_net = load_model(wpod_net_path)
-
+		wpod_net.save(output_dir)
+		exit(0)
 		#imgs_paths = glob('{}/*.jpg'.format(input_dir))
 		onlyfiles = ["{}/{}".format(input_dir,f) for f in listdir(input_dir) if isfile(join(input_dir, f))]
 		print(onlyfiles)
