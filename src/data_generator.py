@@ -5,6 +5,7 @@ from threading import Semaphore, Thread
 from time import sleep
 from random import choice, randint
 from pdb import set_trace as pause
+import tensorflow as tf
 
 class DataGenerator(object):
 
@@ -98,3 +99,72 @@ class DataGenerator(object):
 		return X,Y
 
 
+class CustomDataGenerator(tf.keras.utils.Sequence):
+	def __init__(self, 
+				df,
+				xshape, 
+				yshape, 
+				dtype = 'single',
+				batch_size=32, 
+				num_classes=None, 
+				shuffle=True,
+				pool_size= 1000,
+				min_nsamples= 100):		
+		self.batch_size = batch_size
+		self.df = df
+		self.indices = self.df.index.tolist()
+		self.num_classes = num_classes
+		self.shuffle = shuffle
+		self._xshape = xshape
+		self._yshape = yshape
+		self._pool_size = pool_size
+		self._min_nsamples = min_nsamples
+		self._dtype = dtype
+		self._count = 0
+		self._X, self._Y = self._get_buffers()
+		#self.on_epoch_end()
+
+	def __len__(self):
+		return len(self.indices) // self.batch_size
+
+	def __getitem__(self, index):
+		# index = self.index[index * self.batch_size:(index + 1) * self.batch_size]
+		# batch = [self.indices[k] for k in index]
+		X, y = self.__get_data(batch)
+		return X, y
+
+
+	def _insert_data(self,x,y):
+
+		if self._count < self._pool_size:
+			self._X[self._count] = x
+			self._Y[self._count] = y
+			self._count += 1
+		else:
+			idx = randint(0,self._pool_size-1)
+			self._X[idx] = x
+			self._Y[idx] = y
+
+	def _get_buffers(self):
+		X = np.empty((self.batch_size,) + self._xshape, dtype=self._dtype)
+		Y = np.empty((self.batch_size,) + self._yshape, dtype=self._dtype)
+		return X,Y
+
+	def _compute_sample(self):
+		sample= self.df.sample(n=1)
+		return self._process_data_item([sample['image'],sample['label']])
+
+	def _run(self):
+		x,y = self._compute_sample()
+		self._insert_data(x,y)
+
+	def __get_data(self, batch):
+	   	# while self._count < self._min_nsamples:
+		# 	sleep(.1)
+		self.run()
+		X,Y = self._get_buffers()
+		for i in range(self.batch_size):
+			idx = randint(0,self._count-1)
+			X[i] = self._X[idx]
+			Y[i] = self._Y[idx]
+		return X,Y

@@ -15,6 +15,8 @@ parser.add_argument('--optimizer'		,type=str   , default='Adam'	,help='Optmizer 
 parser.add_argument('--learning_rate'	,type=float , default=.01		,help='Optmizer (default = 0.01)')
 
 parser.add_argument(
+  '--prune_model', default=False, type=bool, help='Whether to prune the model or not')
+parser.add_argument(
   '--epochs', default=10, type=int, help='Number of training epochs')
 parser.add_argument(
   '--use_colab', default=True, type=bool, help='Use google colab')
