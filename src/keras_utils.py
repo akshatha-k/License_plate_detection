@@ -110,6 +110,7 @@ def detect_lp(model,I,max_dim,net_step,out_size,threshold):
 
 	start 	= time.time()
 	Yr 		= model.predict(T)
+	print(Yr.shape)
 	Yr 		= np.squeeze(Yr)
 	elapsed = time.time() - start
 

@@ -7,7 +7,7 @@ from src.keras_utils 			import load_model
 from glob 						import glob
 from os.path 					import splitext, basename
 from src.utils 					import im2single
-from src.keras_utils 			import load_model, detect_lp
+from src.tflite_utils 			import load_model, detect_lp
 from src.label 					import Shape, writeShapes
 from os import listdir
 from os.path import isfile, join
@@ -31,8 +31,7 @@ if __name__ == '__main__':
 
 		wpod_net_path = lp_model
 		wpod_net = load_model(wpod_net_path)
-		wpod_net.save(output_dir)
-		exit(0)
+		#wpod_net.save(output_dir)
 		#imgs_paths = glob('{}/*.jpg'.format(input_dir))
 		onlyfiles = ["{}/{}".format(input_dir,f) for f in listdir(input_dir) if isfile(join(input_dir, f))]
 		print(onlyfiles)
