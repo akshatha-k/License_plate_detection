@@ -15,7 +15,7 @@ from src.sampler import augment_sample, labels2output_map
 from src.utils import image_files_from_folder
 
 
-def load_network(modelpath, input_dim, prune_model):
+def load_network(modelpath, input_dim):
   model = load_model(modelpath)
   # if prune_model:
   #	model = tfmot.sparsity.keras.prune_low_magnitude(model)
@@ -73,7 +73,7 @@ if __name__ == '__main__':
   if not isdir(outdir):
     makedirs(outdir)
 
-  model, model_stride, xshape, yshape = load_network(args.model, dim, args.prune_model)
+  model, model_stride, xshape, yshape = load_network(args.model, dim)
 
   opt = getattr(keras.optimizers, args.optimizer)(lr=args.learning_rate)
 
@@ -118,13 +118,17 @@ if __name__ == '__main__':
 
   model_path_backup = '%s/%s_backup' % (outdir, netname)
   model_path_final = '%s/%s_final' % (outdir, netname)
-  callbacks = [tfmot.sparsity.keras.UpdatePruningStep()]
-  pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
-    initial_sparsity=0.0, final_sparsity=0.5,
-    begin_step=0, end_step=200)
-  model_for_pruning = tfmot.sparsity.keras.prune_low_magnitude(
-    model, pruning_schedule=pruning_schedule)
-  model_for_pruning.compile(loss=loss, optimizer=opt)
+  callbacks = []
+
+  if args.prune_model:
+    callbacks = [tfmot.sparsity.keras.UpdatePruningStep()]
+    pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
+      initial_sparsity=0.0, final_sparsity=0.5,
+      begin_step=0, end_step=200)
+    model = tfmot.sparsity.keras.prune_low_magnitude(
+      model, pruning_schedule=pruning_schedule)
+
+  model.compile(loss=loss, optimizer=opt)
 
   # for it in range(iterations):
 
@@ -139,7 +143,7 @@ if __name__ == '__main__':
   # 	if (it+1) % 1000 == 0:
   # 		print('Saving model (%s)' % model_path_backup)
   # 		save_model(model,model_path_backup)
-  model_for_pruning.fit_generator(train_generator,
+  model.fit_generator(train_generator,
                       steps_per_epoch=(x.shape[0] // args.batch_size),
                       epochs=1,
                       callbacks=callbacks)
