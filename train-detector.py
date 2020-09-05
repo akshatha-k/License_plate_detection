@@ -1,10 +1,11 @@
-from os import makedirs
-from os.path import isfile, isdir, basename, splitext
+import os
+from os.path import isfile, basename, splitext
 from random import choice
 
 import cv2
 import keras
 import numpy as np
+import tensorflow as tf
 import tensorflow_model_optimization as tfmot
 
 from args import get_args
@@ -12,143 +13,119 @@ from src.keras_utils import save_model, load_model
 from src.label import readShapes
 from src.loss import loss
 from src.sampler import augment_sample, labels2output_map
-from src.utils import image_files_from_folder
+from src.utils import image_files_from_folder, get_model_memory_usage
 
 
 def load_network(modelpath, input_dim):
-  model = load_model(modelpath)
-  # if prune_model:
-  #	model = tfmot.sparsity.keras.prune_low_magnitude(model)
-  input_shape = (input_dim, input_dim, 3)
+    model = load_model(modelpath)
+    # if prune_model:
+    #	model = tfmot.sparsity.keras.prune_low_magnitude(model)
+    input_shape = (input_dim, input_dim, 3)
 
-  # Fixed input size for training
-  inputs = keras.layers.Input(shape=(input_dim, input_dim, 3))
-  outputs = model(inputs)
+    # Fixed input size for training
+    inputs = keras.layers.Input(shape=(input_dim, input_dim, 3))
+    outputs = model(inputs)
 
-  output_shape = tuple([s for s in outputs.shape[1:]])
-  output_dim = output_shape[1]
-  model_stride = input_dim / output_dim
+    output_shape = tuple([s for s in outputs.shape[1:]])
+    output_dim = output_shape[1]
+    model_stride = input_dim / output_dim
 
-  assert input_dim % output_dim == 0, \
-    'The output resolution must be divisible by the input resolution'
+    assert input_dim % output_dim == 0, \
+        'The output resolution must be divisible by the input resolution'
 
-  assert model_stride == 2 ** 4, \
-    'Make sure your model generates a feature map with resolution ' \
-    '16x smaller than the input'
+    assert model_stride == 2 ** 4, \
+        'Make sure your model generates a feature map with resolution ' \
+        '16x smaller than the input'
 
-  return model, model_stride, input_shape, output_shape
+    return model, model_stride, input_shape, output_shape
 
 
 def process_data_item(data_item, dim, model_stride):
-  XX, llp, pts = augment_sample(data_item[0], data_item[1].pts, dim)
-  YY = labels2output_map(llp, pts, dim, model_stride)
-  return XX, YY
+    XX, llp, pts = augment_sample(data_item[0], data_item[1].pts, dim)
+    YY = labels2output_map(llp, pts, dim, model_stride)
+    return XX, YY
 
 
 def batch_generator(X, Y, batch_size=1):
-  indices = np.arange(len(X))
-  batch = []
-  while True:
-    # it might be a good idea to shuffle your data before each epoch
-    np.random.shuffle(indices)
-    for i in indices:
-      batch.append(i)
-      if len(batch) == batch_size:
-        yield X[batch], Y[batch]
-        batch = []
+    indices = np.arange(len(X))
+    batch = []
+    while True:
+        # it might be a good idea to shuffle your data before each epoch
+        np.random.shuffle(indices)
+        for i in indices:
+            batch.append(i)
+            if len(batch) == batch_size:
+                yield X[batch], Y[batch]
+                batch = []
 
 
 if __name__ == '__main__':
 
-  args = get_args()
+    args = get_args()
+    if args.use_colab:
+        from google.colab import drive
 
-  netname = basename(args.name)
-  train_dir = args.train_dir
-  outdir = args.output_dir
+        drive.mount('/content/gdrive')
+        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}'.format(args.image_size, args.initial_sparsity,
+                                                                    args.final_sparsity)
+        if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
+        model_name = '{}/{}'.format(OUTPUT_DIR, args.model)
+        model_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
+        tf_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
+        train_dir = '/content/gdrive/My Drive/lpd/train_images'
 
-  iterations = args.iterations
-  batch_size = args.batch_size
-  dim = 208
+    netname = basename(args.name)
+    outdir = OUTPUT_DIR
+    batch_size = args.batch_size
+    dim = args.image_size
 
-  if not isdir(outdir):
-    makedirs(outdir)
+    model, model_stride, xshape, yshape = load_network(model_name, dim)
 
-  model, model_stride, xshape, yshape = load_network(args.model, dim)
+    opt = getattr(keras.optimizers, args.optimizer)(lr=args.learning_rate)
 
-  opt = getattr(keras.optimizers, args.optimizer)(lr=args.learning_rate)
+    print('Checking input directory...')
+    Files = image_files_from_folder(train_dir)
 
-  print('Checking input directory...')
-  Files = image_files_from_folder(train_dir)
+    Data = []
+    for file in Files:
+        labfile = splitext(file)[0] + '.txt'
+        if isfile(labfile):
+            L = readShapes(labfile)
+            I = cv2.imread(file)
+            Data.append([I, L[0]])
 
-  Data = []
-  for file in Files:
-    labfile = splitext(file)[0] + '.txt'
-    if isfile(labfile):
-      L = readShapes(labfile)
-      I = cv2.imread(file)
-      Data.append([I, L[0]])
+    print('%d images with labels found' % len(Data))
 
-  print('%d images with labels found' % len(Data))
+    # creates pool size number of datapoints from existing datapoints
+    # using pre-defined augmentations.
+    X, Y = [], []
+    for i in range(1000):
+        datapoint = choice(Data)
+        x, y = process_data_item(datapoint, dim, model_stride)
+        X.append(x)
+        Y.append(y)
 
-  # creates pool size number of datapoints from existing datapoints
-  # using pre-defined augmentations.
-  X, Y = [], []
-  for i in range(1000):
-    datapoint = choice(Data)
-    x, y = process_data_item(datapoint, dim, model_stride)
-    X.append(x)
-    Y.append(y)
+    x = np.array(X)
+    y = np.array(Y)
+    train_generator = batch_generator(x, y, batch_size=args.batch_size)
+    callbacks = []
 
-  x = np.array(X)
-  y = np.array(Y)
-  train_generator = batch_generator(x, y, batch_size=args.batch_size)
+    if args.prune_model:
+        callbacks = [tfmot.sparsity.keras.UpdatePruningStep()]
+        pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
+            initial_sparsity=args.initial_sparsity, final_sparsity=args.final_sparsity,
+            begin_step=args.begin_step, end_step=args.end_step)
+        model = tfmot.sparsity.keras.prune_low_magnitude(
+            model, pruning_schedule=pruning_schedule)
 
-  # dg = CustomDataGenerator(	data=Data, \
-  # 					process_data_item_func=lambda x: process_data_item(x,dim,model_stride),\
-  # 					xshape=xshape, \
-  # 					yshape=(yshape[0],yshape[1],yshape[2]+1), \
-  # 					nthreads=2, \
-  # 					pool_size=1000, \
-  # 					min_nsamples=100 )
-  # dg = CustomDataGenerator(df=df,xshape = xshape, yshape= (yshape[0],yshape[1],yshape[2]+1))
-  # dg.start()
-
-  # Xtrain = np.empty((batch_size,dim,dim,3),dtype='single')
-  # Ytrain = np.empty((batch_size,int(dim//model_stride),int(dim//model_stride),2*4+1))
-
-  model_path_backup = '%s/%s_backup' % (outdir, netname)
-  model_path_final = '%s/%s_final' % (outdir, netname)
-  callbacks = []
-
-  if args.prune_model:
-    callbacks = [tfmot.sparsity.keras.UpdatePruningStep()]
-    pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
-      initial_sparsity=0.0, final_sparsity=0.5,
-      begin_step=0, end_step=200)
-    model = tfmot.sparsity.keras.prune_low_magnitude(
-      model, pruning_schedule=pruning_schedule)
-
-  model.compile(loss=loss, optimizer=opt)
-
-  # for it in range(iterations):
-
-  # 	print('Iter. %d (of %d)' % (it+1,iterations))
-
-  # 	Xtrain,Ytrain = dg.get_batch(batch_size)
-  # 	train_loss = model.train_on_batch(Xtrain,Ytrain,callbacks=callbacks)
-
-  # 	print('\tLoss: %f' % train_loss)
-
-  # 	# Save model every 1000 iterations
-  # 	if (it+1) % 1000 == 0:
-  # 		print('Saving model (%s)' % model_path_backup)
-  # 		save_model(model,model_path_backup)
-  model.fit_generator(train_generator,
-                      steps_per_epoch=(x.shape[0] // args.batch_size),
-                      epochs=1,
-                      callbacks=callbacks)
-  print('Stopping data generator')
-  # dg.stop()
-
-  print('Saving model (%s)' % model_path_final)
-  save_model(model, model_path_final)
+    model.compile(loss=loss, optimizer=opt)
+    model.fit_generator(train_generator,
+                        steps_per_epoch=(x.shape[0] // args.batch_size),
+                        epochs=args.epochs,
+                        callbacks=callbacks)
+    print('Stopping data generator')
+    print('Saving model (%s)' % model_path_final)
+    save_model(model, model_path_final)
+    tf.saved_model.save(model, tf_path_final)
+    model_size_gb = get_model_memory_usage(batch_size, model)
+    print("Model size in gb is : {}".format(model_size_gb))
