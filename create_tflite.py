@@ -3,7 +3,9 @@ import os
 import tensorflow as tf
 
 from args import get_args
+from src.utils import get_logger
 
+logger = get_logger(__name__)
 args = get_args()
 if args.use_colab:
     from google.colab import drive
@@ -18,8 +20,6 @@ if args.use_colab:
 
 IMAGE_SIZE = args.image_size
 model = tf.saved_model.load(model_path_final)
-print(model)
-exit(0)
 concrete_func = model.signatures[
     tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY]
 concrete_func.inputs[0].set_shape([None, IMAGE_SIZE, IMAGE_SIZE, 3])

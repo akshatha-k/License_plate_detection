@@ -13,13 +13,13 @@ from src.keras_utils import save_model, load_model
 from src.label import readShapes
 from src.loss import loss
 from src.sampler import augment_sample, labels2output_map
-from src.utils import image_files_from_folder, get_model_memory_usage
+from src.utils import image_files_from_folder, get_logger
+
+logger = get_logger(__name__)
 
 
 def load_network(modelpath, input_dim):
     model = load_model(modelpath)
-    # if prune_model:
-    #	model = tfmot.sparsity.keras.prune_low_magnitude(model)
     input_shape = (input_dim, input_dim, 3)
 
     # Fixed input size for training
@@ -84,6 +84,8 @@ if __name__ == '__main__':
     opt = getattr(keras.optimizers, args.optimizer)(lr=args.learning_rate)
 
     print('Checking input directory...')
+    logger.info('Checking input directory...')
+
     Files = image_files_from_folder(train_dir)
 
     Data = []
@@ -95,11 +97,11 @@ if __name__ == '__main__':
             Data.append([I, L[0]])
 
     print('%d images with labels found' % len(Data))
-
+    logger.info('%d images with labels found' % len(Data))
     # creates pool size number of datapoints from existing datapoints
     # using pre-defined augmentations.
     X, Y = [], []
-    for i in range(1000):
+    for i in range(args.num_augs):
         datapoint = choice(Data)
         x, y = process_data_item(datapoint, dim, model_stride)
         X.append(x)
@@ -124,8 +126,8 @@ if __name__ == '__main__':
                         epochs=args.epochs,
                         callbacks=callbacks)
     print('Stopping data generator')
+    logger.info('Stopping data generator')
     print('Saving model (%s)' % model_path_final)
+    logger.info('Saving model (%s)' % model_path_final)
     save_model(model, model_path_final)
     tf.saved_model.save(model, tf_path_final)
-    model_size_gb = get_model_memory_usage(batch_size, model)
-    print("Model size in gb is : {}".format(model_size_gb))

@@ -14,6 +14,8 @@ parser.add_argument('--batch_size', type=int, default=32, help='Mini-batch size 
 parser.add_argument('--image_size', type=int, default=208, help='Image size')
 parser.add_argument(
     '--epochs', default=10, type=int, help='Number of training epochs')
+parser.add_argument(
+    '--num_augs', default=10, type=int, help='Total number of images after random augmentations')
 
 # colab specific
 parser.add_argument(

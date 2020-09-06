@@ -7,8 +7,9 @@ from keras.models import Model
 
 from args import get_args
 from src.keras_utils import save_model
+from src.utils import get_logger
 
-
+logger = get_logger(__name__)
 def res_block(x, sz, filter_sz=3, in_conv_size=1):
     xi = x
     for i in range(in_conv_size):
@@ -84,6 +85,7 @@ def create_model_mobnet():
     for layer in model.layers:
         if layer.name in backbone_layers:
             print('setting ' + layer.name)
+            logger.info('setting ' + layer.name)
             layer.set_weights(backbone_layers[layer.name].get_weights())
 
     return model
@@ -113,4 +115,5 @@ if __name__ == '__main__':
     model = create_model(args)
 
     print('Saving at %s' % model_name)
+    logger.info('Saving at %s' % model_name)
     save_model(model, model_name)
