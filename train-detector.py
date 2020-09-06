@@ -13,9 +13,10 @@ from src.keras_utils import save_model, load_model
 from src.label import readShapes
 from src.loss import loss
 from src.sampler import augment_sample, labels2output_map
-from src.utils import image_files_from_folder, get_logger
+from src.utils import image_files_from_folder, get_logger, setup_dirs
 
-logger = get_logger(__name__)
+setup_dirs()
+logger = get_logger("train-detector")
 
 
 def load_network(modelpath, input_dim):
@@ -66,7 +67,7 @@ if __name__ == '__main__':
         from google.colab import drive
 
         drive.mount('/content/gdrive')
-        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}'.format(args.image_size, args.initial_sparsity,
+        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}'.format(args.image_size, args.prune_model, args.initial_sparsity,
                                                                     args.final_sparsity)
         if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
         model_name = '{}/{}'.format(OUTPUT_DIR, args.model)

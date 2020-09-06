@@ -3,16 +3,18 @@ import os
 import tensorflow as tf
 
 from args import get_args
-from src.utils import get_logger
+from src.utils import get_logger, setup_dirs
 
-logger = get_logger(__name__)
+setup_dirs()
+logger = get_logger("create-tflite")
 args = get_args()
 if args.use_colab:
     from google.colab import drive
 
     drive.mount('/content/gdrive')
-    OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}'.format(args.image_size, args.initial_sparsity,
-                                                                args.final_sparsity)
+    OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}'.format(args.image_size, args.prune_model,
+                                                                   args.initial_sparsity,
+                                                                   args.final_sparsity)
     if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
     model_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
     model_name = '{}/{}'.format(model_path_final, args.model)

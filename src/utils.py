@@ -1,9 +1,14 @@
 import logging
+import os
 import sys
+import zipfile
+import tempfile
 from logging.handlers import RotatingFileHandler
 
 import cv2
 import numpy as np
+
+from args import get_args
 
 try:
     from keras import backend as K
@@ -13,6 +18,7 @@ from glob import glob
 
 FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                               datefmt='%m/%d/%Y %I:%M:%S %p')
+args = get_args()
 
 
 def get_console_handler():
@@ -23,7 +29,13 @@ def get_console_handler():
 
 def get_file_handler(logfile_name):
     try:
-        file_handler = RotatingFileHandler('logs/{}.log'.format(logfile_name, mode='w'))
+        if args.use_colab:
+            OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}'.format(args.image_size, args.prune_model,
+                                                                           args.initial_sparsity,
+                                                                           args.final_sparsity)
+            file_handler = RotatingFileHandler('{}/logs/{}.log'.format(OUTPUT_DIR, logfile_name, mode='w'))
+        else:
+            file_handler = RotatingFileHandler('logs/{}.log'.format(logfile_name, mode='w'))
     except:
         raise OSError('Logs directory not created')
     file_handler.setFormatter(FORMATTER)
@@ -38,6 +50,25 @@ def get_logger(logger_name):
     # with this pattern, it's rarely necessary to propagate the error up to parent
     logger.propagate = False
     return logger
+
+
+def setup_dirs():
+    try:
+        if args.use_colab:
+            from google.colab import drive
+
+            drive.mount('/content/gdrive')
+            OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}'.format(args.image_size, args.prune_model,
+                                                                           args.initial_sparsity,
+                                                                           args.final_sparsity)
+            if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
+            log_dir = '{}/logs'.format(OUTPUT_DIR)
+            if not os.path.isdir(log_dir): os.makedirs(log_dir)
+        else:
+            os.makedirs('logs')
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
 
 
 def im2single(I):
@@ -187,3 +218,12 @@ def get_model_memory_usage(batch_size, model):
     total_memory = number_size * (batch_size * shapes_mem_count + trainable_count + non_trainable_count)
     gbytes = np.round(total_memory / (1024.0 ** 3), 3) + internal_model_mem_count
     return gbytes
+
+
+def get_gzipped_model_size(file):
+    # Returns size of gzipped model, in bytes.
+    _, zipped_file = tempfile.mkstemp('.zip')
+    with zipfile.ZipFile(zipped_file, 'w', compression=zipfile.ZIP_DEFLATED) as f:
+        f.write(file)
+
+    return os.path.getsize(zipped_file)
