@@ -13,7 +13,7 @@ parser.add_argument('--learning_rate', type=float, default=.01, help='Optimizer 
 parser.add_argument('--batch_size', type=int, default=32, help='Mini-batch size (default = 32)')
 parser.add_argument('--image_size', type=int, default=208, help='Image size')
 parser.add_argument(
-    '--epochs', default=10, type=int, help='Number of training epochs')
+    '--epochs', default=1, type=int, help='Number of training epochs')
 parser.add_argument(
     '--num_augs', default=1000, type=int, help='Total number of images after random augmentations')
 
@@ -33,7 +33,7 @@ parser.add_argument(
 parser.add_argument(
     '--begin_step', type=int, default=0, help='Start pruning point')
 parser.add_argument(
-    '--end_step', type=int, default=200, help='End pruning point')
+    '--end_step', type=int, default=20, help='End pruning point')
 
 # cyclical learning rate params
 parser.add_argument(

@@ -67,13 +67,14 @@ if __name__ == '__main__':
         from google.colab import drive
 
         drive.mount('/content/gdrive')
-        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}'.format(args.image_size, args.prune_model, args.initial_sparsity,
+        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}_{}'.format(args.image_size, args.epochs, args.prune_model, args.initial_sparsity,
                                                                     args.final_sparsity)
         if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
         model_name = '{}/{}'.format(OUTPUT_DIR, args.model)
         model_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
         tf_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
         train_dir = '/content/gdrive/My Drive/lpd/train_images'
+        log_dir = '{}/logs'.format(OUTPUT_DIR)
 
     netname = basename(args.name)
     outdir = OUTPUT_DIR
@@ -114,7 +115,8 @@ if __name__ == '__main__':
     callbacks = []
 
     if args.prune_model:
-        callbacks = [tfmot.sparsity.keras.UpdatePruningStep()]
+        callbacks = [tfmot.sparsity.keras.UpdatePruningStep(),
+                    tfmot.sparsity.keras.PruningSummaries(log_dir=log_dir)]
         pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
             initial_sparsity=args.initial_sparsity, final_sparsity=args.final_sparsity,
             begin_step=args.begin_step, end_step=args.end_step)
@@ -126,9 +128,11 @@ if __name__ == '__main__':
                         steps_per_epoch=(x.shape[0] // args.batch_size),
                         epochs=args.epochs,
                         callbacks=callbacks)
+    if args.prune_model:
+        model = tfmot.sparsity.keras.strip_pruning(model)
     print('Stopping data generator')
     logger.info('Stopping data generator')
     print('Saving model (%s)' % model_path_final)
     logger.info('Saving model (%s)' % model_path_final)
     save_model(model, model_path_final)
-    tf.saved_model.save(model, tf_path_final)
+    model.save(tf_path_final)

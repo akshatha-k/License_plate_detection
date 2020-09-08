@@ -106,7 +106,7 @@ if __name__ == '__main__':
         from google.colab import drive
 
         drive.mount('/content/gdrive')
-        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}'.format(args.image_size, args.prune_model,
+        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}_{}'.format(args.image_size, args.epochs, args.prune_model,
                                                                        args.initial_sparsity,
                                                                        args.final_sparsity)
         if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
