@@ -19,6 +19,28 @@ setup_dirs()
 logger = get_logger("train-detector")
 
 
+def lr_schedule(epoch, lr):
+    """Learning Rate Schedule
+    Learning rate is scheduled to be reduced after 80, 120, 160, 180 epochs.
+    Called automatically every epoch as part of callbacks during training.
+    # Arguments
+        epoch (int): The number of epochs
+    # Returns
+        lr (float32): learning rate
+    """
+    lr = 1e-3
+    if epoch > 180:
+        lr *= 0.5e-3
+    elif epoch > 160:
+        lr *= 1e-3
+    elif epoch > 120:
+        lr *= 1e-2
+    elif epoch > 80:
+        lr *= 1e-1
+    # print('Learning rate: ', lr)
+    return lr
+
+
 def load_network(modelpath, input_dim):
     model = load_model(modelpath)
     input_shape = (input_dim, input_dim, 3)
@@ -46,11 +68,13 @@ def process_data_item(data_item, dim, model_stride):
     YY = labels2output_map(llp, pts, dim, model_stride)
     return XX, YY
 
+
 def schedule(epoch, lr):
     if epoch < 50:
         return lr
     else:
         return lr * tf.math.exp(-0.1)
+
 
 def batch_generator(X, Y, batch_size=1):
     indices = np.arange(len(X))
@@ -72,11 +96,13 @@ if __name__ == '__main__':
         from google.colab import drive
 
         drive.mount('/content/gdrive')
-        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}_{}'.format(args.image_size, args.epochs, args.prune_model, args.initial_sparsity,
-                                                                    args.final_sparsity)
+        OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}_{}'.format(args.image_size, args.epochs,
+                                                                          args.prune_model, args.initial_sparsity,
+                                                                          args.final_sparsity)
         if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
         model_name = '{}/{}'.format(OUTPUT_DIR, args.model)
         model_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
+        pruned_path_final = '{}/{}_pruned'.format(OUTPUT_DIR, args.model)
         tf_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
         train_dir = '/content/gdrive/My Drive/lpd/train_images'
         log_dir = '{}/logs'.format(OUTPUT_DIR)
@@ -117,8 +143,19 @@ if __name__ == '__main__':
     x = np.array(X)
     y = np.array(Y)
     train_generator = batch_generator(x, y, batch_size=args.batch_size)
-    callbacks = [tf.keras.callbacks.LearningRateScheduler(schedule)]
+    callbacks = [tf.keras.callbacks.LearningRateScheduler(lr_schedule)]
 
+    model.compile(loss=loss, optimizer=opt)
+    model.fit_generator(train_generator,
+                        steps_per_epoch=(x.shape[0] // args.batch_size),
+                        epochs=args.epochs,
+                        callbacks=callbacks)
+    print('Stopping data generator')
+    logger.info('Stopping data generator')
+    print('Saving model (%s)' % model_path_final)
+    logger.info('Saving model (%s)' % model_path_final)
+    save_model(model, model_path_final)
+    model.save(tf_path_final)
     if args.prune_model:
         callbacks.append(tfmot.sparsity.keras.UpdatePruningStep())
         callbacks.append(tfmot.sparsity.keras.PruningSummaries(log_dir=log_dir))
@@ -128,16 +165,15 @@ if __name__ == '__main__':
         model = tfmot.sparsity.keras.prune_low_magnitude(
             model, pruning_schedule=pruning_schedule)
 
-    model.compile(loss=loss, optimizer=opt)
-    model.fit_generator(train_generator,
-                        steps_per_epoch=(x.shape[0] // args.batch_size),
-                        epochs=args.epochs,
-                        callbacks=callbacks)
-    if args.prune_model:
+        model.compile(loss=loss, optimizer=opt)
+        model.fit_generator(train_generator,
+                            steps_per_epoch=(x.shape[0] // args.batch_size),
+                            epochs=args.epochs,
+                            callbacks=callbacks)
         model = tfmot.sparsity.keras.strip_pruning(model)
-    print('Stopping data generator')
-    logger.info('Stopping data generator')
-    print('Saving model (%s)' % model_path_final)
-    logger.info('Saving model (%s)' % model_path_final)
-    save_model(model, model_path_final)
-    model.save(tf_path_final)
+        print('Stopping (PRUNED) data generator')
+        logger.info('Stopping (PRUNED) data generator')
+        print('Saving (PRUNED) model (%s)' % pruned_path_final)
+        logger.info('Saving (PRUNED) model (%s)' % pruned_path_final)
+        save_model(model, pruned_path_final)
+        model.save(tf_path_final)

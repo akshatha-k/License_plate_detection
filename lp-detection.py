@@ -33,10 +33,14 @@ if __name__ == '__main__':
                                                                        args.final_sparsity)
         if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
         lp_model = '%s/%s_trained' % (OUTPUT_DIR, args.model)
+        pruned_model = '%s/%s_pruned' % (OUTPUT_DIR, args.model)
         test_dir = '/content/gdrive/My Drive/lpd/test_images'
         output_dir = '{}/results'.format(OUTPUT_DIR)
         if not os.path.isdir(output_dir): os.makedirs(output_dir)
-        h5_model = '%s/%s_trained.h5' % (OUTPUT_DIR, args.model)
+        pruned_output_dir = '{}/pruned_results'.format(OUTPUT_DIR)
+        if not os.path.isdir(pruned_output_dir): os.makedirs(pruned_output_dir)
+        h5_model = '%s/%s_pruned_trained.h5' % (OUTPUT_DIR, args.model)
+        h5_pruned_model = '%s/%s_pruned_trained.h5' % (OUTPUT_DIR, args.model)
 
 try:
     lp_threshold = .5
@@ -84,6 +88,54 @@ try:
     logger.info("Model size in kb is : {}".format(model_size_gb * 1024 * 1024))
     print("Mean inference time (in seconds) : {}".format(mean(inference_times)))
     logger.info("Mean inference time (in seconds) : {}".format(mean(inference_times)))
+
+    if args.prune_model:
+        lp_threshold = .5
+
+        wpod_net_path = pruned_model
+        wpod_net = load_model(wpod_net_path)
+        onlyfiles = ["{}/{}".format(test_dir, f) for f in listdir(test_dir) if isfile(join(test_dir, f))]
+        print(onlyfiles)
+        print('Searching for license plates using WPOD-NET(PRUNED) ')
+        logger.info('Searching for license plates using WPOD-NET(PRUNED) ')
+        inference_times = []
+        for i, img_path in enumerate(onlyfiles):
+
+            print('\t Processing %s' % img_path)
+            logger.info('\t Processing %s' % img_path)
+
+            bname = splitext(basename(img_path))[0]
+            Ivehicle = cv2.imread(img_path)
+
+            ratio = float(max(Ivehicle.shape[:2])) / min(Ivehicle.shape[:2])
+            side = int(ratio * 288.)
+            bound_dim = min(side + (side % (2 ** 4)), 608)
+            # print("\t\tBound dim: %d, ratio: %f" % (bound_dim, ratio))
+            # logger.info("\t\tBound dim: %d, ratio: %f" % (bound_dim, ratio))
+
+            Llp, LlpImgs, elapsed_time = detect_lp(wpod_net, im2single(Ivehicle), bound_dim, 2 ** 4, (240, 80),
+                                                   lp_threshold)
+            inference_times.append(elapsed_time)
+
+            if len(LlpImgs):
+                Ilp = LlpImgs[0]
+                Ilp = cv2.cvtColor(Ilp, cv2.COLOR_BGR2GRAY)
+                Ilp = cv2.cvtColor(Ilp, cv2.COLOR_GRAY2BGR)
+
+                s = Shape(Llp[0].pts)
+                cv2.imwrite('%s/%s_lp.png' % (pruned_output_dir, bname), Ilp * 255.)
+                writeShapes('%s/%s_lp.txt' % (pruned_output_dir, bname), [s])
+        model_size_gb = get_model_memory_usage(args.batch_size, wpod_net)
+        print("(PRUNED) Model size in gb is : {}".format(model_size_gb))
+        logger.info("(PRUNED) Model size in gb is : {}".format(model_size_gb))
+        print("(PRUNED) Model size after gzip is : {} bytes".format(get_gzipped_model_size(h5_pruned_model)))
+        logger.info("Model size after gzip is : {} bytes".format(get_gzipped_model_size(h5_pruned_model)))
+        print("(PRUNED) Model size in mb is : {}".format(model_size_gb * 1024))
+        logger.info("(PRUNED) Model size in mb is : {}".format(model_size_gb * 1024))
+        print("(PRUNED) Model size in mb is : {}".format(model_size_gb * 1024 * 1024))
+        logger.info("(PRUNED) Model size in kb is : {}".format(model_size_gb * 1024 * 1024))
+        print("(PRUNED) Mean inference time (in seconds) : {}".format(mean(inference_times)))
+        logger.info("(PRUNED) Mean inference time (in seconds) : {}".format(mean(inference_times)))
 
 except:
     traceback.print_exc()
