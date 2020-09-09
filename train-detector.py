@@ -104,6 +104,7 @@ if __name__ == '__main__':
         model_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
         pruned_path_final = '{}/{}_pruned'.format(OUTPUT_DIR, args.model)
         tf_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
+        pruned_tf_path_final = '%s/%s_pruned' % (OUTPUT_DIR, args.model)
         train_dir = '/content/gdrive/My Drive/lpd/train_images'
         log_dir = '{}/logs'.format(OUTPUT_DIR)
 
@@ -176,4 +177,4 @@ if __name__ == '__main__':
         print('Saving (PRUNED) model (%s)' % pruned_path_final)
         logger.info('Saving (PRUNED) model (%s)' % pruned_path_final)
         save_model(model, pruned_path_final)
-        model.save(tf_path_final)
+        model.save(pruned_tf_path_final)

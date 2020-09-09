@@ -62,10 +62,10 @@ def setup_dirs():
                                                                            args.initial_sparsity,
                                                                            args.final_sparsity)
             if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
-            log_dir = '{}/logs'.format(OUTPUT_DIR)
+            log_dir = '{}/my_logs'.format(OUTPUT_DIR)
             if not os.path.isdir(log_dir): os.makedirs(log_dir)
         else:
-            os.makedirs('logs')
+            os.makedirs('my_logs')
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise

@@ -39,8 +39,8 @@ if __name__ == '__main__':
         if not os.path.isdir(output_dir): os.makedirs(output_dir)
         pruned_output_dir = '{}/pruned_results'.format(OUTPUT_DIR)
         if not os.path.isdir(pruned_output_dir): os.makedirs(pruned_output_dir)
-        h5_model = '%s/%s_pruned_trained.h5' % (OUTPUT_DIR, args.model)
-        h5_pruned_model = '%s/%s_pruned_trained.h5' % (OUTPUT_DIR, args.model)
+        h5_model = '%s/%s_trained.h5' % (OUTPUT_DIR, args.model)
+        h5_pruned_model = '%s/%s_pruned.h5' % (OUTPUT_DIR, args.model)
 
 try:
     lp_threshold = .5
