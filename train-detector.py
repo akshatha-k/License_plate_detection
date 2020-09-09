@@ -46,6 +46,11 @@ def process_data_item(data_item, dim, model_stride):
     YY = labels2output_map(llp, pts, dim, model_stride)
     return XX, YY
 
+def schedule(epoch, lr):
+    if epoch < 50:
+        return lr
+    else:
+        return lr * tf.math.exp(-0.1)
 
 def batch_generator(X, Y, batch_size=1):
     indices = np.arange(len(X))
@@ -112,11 +117,11 @@ if __name__ == '__main__':
     x = np.array(X)
     y = np.array(Y)
     train_generator = batch_generator(x, y, batch_size=args.batch_size)
-    callbacks = []
+    callbacks = [tf.keras.callbacks.LearningRateScheduler(schedule)]
 
     if args.prune_model:
-        callbacks = [tfmot.sparsity.keras.UpdatePruningStep(),
-                    tfmot.sparsity.keras.PruningSummaries(log_dir=log_dir)]
+        callbacks.append(tfmot.sparsity.keras.UpdatePruningStep())
+        callbacks.append(tfmot.sparsity.keras.PruningSummaries(log_dir=log_dir))
         pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
             initial_sparsity=args.initial_sparsity, final_sparsity=args.final_sparsity,
             begin_step=args.begin_step, end_step=args.end_step)

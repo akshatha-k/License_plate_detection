@@ -34,7 +34,7 @@ if __name__ == '__main__':
         if not os.path.isdir(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
         tflite_path = '{}/{}.tflite'.format(OUTPUT_DIR, args.model)
         test_dir = '/content/gdrive/My Drive/lpd/test_images'
-        output_dir = '{}/{}'.format(OUTPUT_DIR, 'results')
+        output_dir = '{}/{}'.format(OUTPUT_DIR, 'tflite_results')
         if not os.path.isdir(output_dir): os.makedirs(output_dir)
 try:
     lp_threshold = .5
