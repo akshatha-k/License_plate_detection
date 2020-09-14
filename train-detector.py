@@ -106,7 +106,7 @@ if __name__ == '__main__':
         tf_path_final = '{}/{}_trained'.format(OUTPUT_DIR, args.model)
         pruned_tf_path_final = '%s/%s_pruned' % (OUTPUT_DIR, args.model)
         train_dir = '/content/gdrive/My Drive/lpd/train_images'
-        log_dir = '{}/logs'.format(OUTPUT_DIR)
+        log_dir = '{}/my_logs'.format(OUTPUT_DIR)
 
     netname = basename(args.name)
     outdir = OUTPUT_DIR

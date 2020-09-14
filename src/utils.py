@@ -33,9 +33,9 @@ def get_file_handler(logfile_name):
             OUTPUT_DIR = '/content/gdrive/My Drive/lpd/{}_{}_{}_{}'.format(args.image_size, args.prune_model,
                                                                            args.initial_sparsity,
                                                                            args.final_sparsity)
-            file_handler = RotatingFileHandler('{}/logs/{}.log'.format(OUTPUT_DIR, logfile_name, mode='w'))
+            file_handler = RotatingFileHandler('{}/my_logs/{}.log'.format(OUTPUT_DIR, logfile_name, mode='w'))
         else:
-            file_handler = RotatingFileHandler('logs/{}.log'.format(logfile_name, mode='w'))
+            file_handler = RotatingFileHandler('my_logs/{}.log'.format(logfile_name, mode='w'))
     except:
         raise OSError('Logs directory not created')
     file_handler.setFormatter(FORMATTER)
