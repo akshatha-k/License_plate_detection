@@ -9,7 +9,8 @@ import tensorflow.lite as tflite
 from src.label import Label
 from src.projection_utils import getRectPts, find_T_matrix
 from src.utils import getWH, nms
-
+from args import get_args
+args = get_args()
 
 class DLabel(Label):
 
@@ -100,7 +101,7 @@ def detect_lp(interpreter, I, max_dim, net_step, out_size, threshold):
     w += (w % net_step != 0) * (net_step - w % net_step)
     h += (h % net_step != 0) * (net_step - h % net_step)
     # Iresized = cv2.resize(I,(w,h))
-    Iresized = cv2.resize(I, (208, 208))
+    Iresized = cv2.resize(I, (args.image_size, args.image_size))
     T = Iresized.copy()
     T = T.reshape((1, T.shape[0], T.shape[1], T.shape[2]))
     start = time.time()
